@@ -185,9 +185,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetStatus status ->
-            ( { model | status = status }
-            , Cmd.none
-            )
+            ( { model | status = status }, Cmd.none )
 
         SetSlider name position ->
             applyFilters
