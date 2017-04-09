@@ -42,11 +42,7 @@ view model =
             [ onClick SurpriseMe ]
             [ text "Surprise Me!" ]
         , div [ class "status" ] [ text model.status ]
-        , div [ class "filters" ]
-            [ viewFilter "Hue" SetHue model.hue
-            , viewFilter "Ripple" SetRipple model.ripple
-            , viewFilter "Noise" SetNoise model.noise
-            ]
+        , div [ class "filters" ] (List.map viewSlider model.sliders)
         , h3 [] [ text "Thumbnail Size:" ]
         , div [ id "choose-size" ]
             (List.map viewSizeChooser [ Small, Medium, Large ])
@@ -56,12 +52,16 @@ view model =
         ]
 
 
-viewFilter : String -> (Int -> Msg) -> Int -> Html Msg
-viewFilter name toMsg magnitude =
+viewSlider : SliderInfo -> Html Msg
+viewSlider info =
     div [ class "filter-slider" ]
-        [ label [] [ text name ]
-        , paperSlider [ Attr.max "11", onImmediateValueChange toMsg ] []
-        , label [] [ text (toString magnitude) ]
+        [ label [] [ text info.name ]
+        , paperSlider
+            [ Attr.max (toString maxSliderPosition)
+            , onImmediateValueChange (SetSlider info.name)
+            ]
+            []
+        , label [] [ text (toString info.position) ]
         ]
 
 
@@ -115,7 +115,7 @@ port statusChanges : (String -> msg) -> Sub msg
 
 type alias FilterOptions =
     { url : String
-    , filters : List { name : String, amount : Float }
+    , filters : List FilterInfo
     }
 
 
@@ -132,9 +132,7 @@ type alias Model =
     , selectedUrl : Maybe String
     , loadingError : Maybe String
     , chosenSize : ThumbnailSize
-    , hue : Int
-    , ripple : Int
-    , noise : Int
+    , sliders : List SliderInfo
     }
 
 
@@ -145,9 +143,11 @@ initialModel =
     , selectedUrl = Nothing
     , loadingError = Nothing
     , chosenSize = Medium
-    , hue = 0
-    , ripple = 0
-    , noise = 0
+    , sliders =
+        [ { name = "Hue", position = 0 }
+        , { name = "Ripple", position = 0 }
+        , { name = "Noise", position = 0 }
+        ]
     }
 
 
@@ -173,9 +173,7 @@ type Msg
     | SurpriseMe
     | SetSize ThumbnailSize
     | LoadPhotos (Result Http.Error (List Photo))
-    | SetHue Int
-    | SetRipple Int
-    | SetNoise Int
+    | SetSlider String Int
 
 
 randomPhotoPicker : Random.Generator Int
@@ -187,16 +185,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SetStatus status ->
-            ( { model | status = status }, Cmd.none )
+            ( { model | status = status }
+            , Cmd.none
+            )
 
-        SetHue hue ->
-            applyFilters { model | hue = hue }
-
-        SetRipple ripple ->
-            applyFilters { model | ripple = ripple }
-
-        SetNoise noise ->
-            applyFilters { model | noise = noise }
+        SetSlider name position ->
+            applyFilters
+                { model
+                    | sliders =
+                        model.sliders
+                            |> List.map (updateSliderPosition name position)
+                }
 
         SelectByIndex index ->
             let
@@ -209,8 +208,8 @@ update msg model =
             in
                 applyFilters { model | selectedUrl = newSelectedUrl }
 
-        SelectByUrl selectedUrl ->
-            applyFilters { model | selectedUrl = Just selectedUrl }
+        SelectByUrl url ->
+            applyFilters { model | selectedUrl = Just url }
 
         SurpriseMe ->
             let
@@ -241,17 +240,12 @@ applyFilters : Model -> ( Model, Cmd Msg )
 applyFilters model =
     case model.selectedUrl of
         Just selectedUrl ->
-            let
-                filters =
-                    [ { name = "Hue", amount = toFloat model.hue / 11 }
-                    , { name = "Ripple", amount = toFloat model.ripple / 11 }
-                    , { name = "Noise", amount = toFloat model.noise / 11 }
-                    ]
-
-                url =
-                    urlPrefix ++ "large/" ++ selectedUrl
-            in
-                ( model, setFilters { url = url, filters = filters } )
+            ( model
+            , setFilters
+                { url = urlPrefix ++ "large/" ++ selectedUrl
+                , filters = List.map sliderToFilter model.sliders
+                }
+            )
 
         Nothing ->
             ( model, Cmd.none )
@@ -306,3 +300,42 @@ onImmediateValueChange toMsg =
     at [ "target", "immediateValue" ] int
         |> Json.Decode.map toMsg
         |> on "immediate-value-changed"
+
+
+maxSliderPosition : Int
+maxSliderPosition =
+    11
+
+
+type alias SliderInfo =
+    { name : String
+    , position : Int
+    }
+
+
+updateSliderPosition : String -> Int -> SliderInfo -> SliderInfo
+updateSliderPosition name position info =
+    if info.name == name then
+        { position = position
+        , name = info.name
+        }
+    else
+        info
+
+
+type alias FilterInfo =
+    { name : String
+    , amount : Float
+    }
+
+
+sliderToFilter : SliderInfo -> FilterInfo
+sliderToFilter sliderInfo =
+    { name = sliderInfo.name
+    , amount = normalize sliderInfo.position maxSliderPosition
+    }
+
+
+normalize : Int -> Int -> Float
+normalize position maxPosition =
+    toFloat position / toFloat maxPosition
