@@ -311,6 +311,12 @@ type alias SliderInfo =
     }
 
 
+type alias FilterInfo =
+    { name : String
+    , amount : Float
+    }
+
+
 updateSliderPosition : String -> Int -> SliderInfo -> SliderInfo
 updateSliderPosition name position info =
     if info.name == name then
@@ -319,12 +325,6 @@ updateSliderPosition name position info =
         }
     else
         info
-
-
-type alias FilterInfo =
-    { name : String
-    , amount : Float
-    }
 
 
 sliderToFilter : SliderInfo -> FilterInfo
