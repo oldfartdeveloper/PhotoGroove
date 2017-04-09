@@ -206,8 +206,8 @@ update msg model =
             in
                 applyFilters { model | selectedUrl = newSelectedUrl }
 
-        SelectByUrl url ->
-            applyFilters { model | selectedUrl = Just url }
+        SelectByUrl selectedUrl ->
+            applyFilters { model | selectedUrl = Just selectedUrl }
 
         SurpriseMe ->
             let
