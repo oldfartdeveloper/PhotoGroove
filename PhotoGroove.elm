@@ -330,10 +330,10 @@ updateSliderPosition name position info =
 sliderToFilter : SliderInfo -> FilterInfo
 sliderToFilter sliderInfo =
     { name = sliderInfo.name
-    , amount = normalize sliderInfo.position maxSliderPosition
+    , amount = convertToRatio sliderInfo.position maxSliderPosition
     }
 
 
-normalize : Int -> Int -> Float
-normalize position maxPosition =
+convertToRatio : Int -> Int -> Float
+convertToRatio position maxPosition =
     toFloat position / toFloat maxPosition
